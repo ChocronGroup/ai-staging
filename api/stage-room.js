@@ -6,11 +6,10 @@ export const config = {
 
 import formidable from "formidable";
 import fs from "fs";
-import OpenAI from "openai";
+import Replicate from "replicate";
 
-// OPENAI CLIENT
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
 });
 
 export default async function handler(req, res) {
@@ -22,38 +21,46 @@ export default async function handler(req, res) {
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("Formidable parse error:", err);
+      console.error("Form error:", err);
       return res.status(400).json({ error: "Upload error" });
     }
 
     try {
       const prompt = fields.prompt;
-
-      // FILE FIX HERE (the correct field name is `image`)
       const img = files.image?.[0];
 
       if (!img) {
-        console.error("Uploaded files:", files);
-        return res.status(400).json({ error: "Image missing from upload" });
+        console.error("No image:", files);
+        return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // OpenAI Image Edit (supports uploaded images)
-      const result = await client.images.edits({
-        model: "gpt-image-1",
-        prompt: prompt,
-        image: fs.createReadStream(img.filepath),
-        size: "1024x1024",
-        response_format: "b64_json"
+      // Read image data into base64
+      const imageBase64 = fs.readFileSync(img.filepath, {
+        encoding: "base64",
       });
 
-      const base64 = result.data[0].b64_json;
-      const imageUrl = `data:image/png;base64,${base64}`;
+      // Use Stable Diffusion Inpainting model
+      const output = await replicate.run(
+        "stability-ai/stable-diffusion-inpainting:4fba758f87c1d4e61a34ea7cde5335c650b29fbb620142f4e2d8736301478bcb",
+        {
+          input: {
+            prompt: prompt,
+            image: `data:image/jpeg;base64,${imageBase64}`,
+            mask: null, // Let model decide what to replace
+            guidance_scale: 7.5,
+            num_inference_steps: 50,
+          },
+        }
+      );
+
+      // Output is usually an array with first image URL
+      const imageUrl = Array.isArray(output) ? output[0] : output;
 
       res.status(200).json({ imageUrl });
 
     } catch (error) {
-      console.error("AI processing failed:", error);
-      res.status(500).json({ error: "AI processing failed" });
+      console.error("Replicate Error:", error);
+      res.status(500).json({ error: "Staging failed" });
     }
   });
 }
