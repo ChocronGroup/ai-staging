@@ -34,17 +34,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // Read uploaded file into base64
       const base64Image = fs.readFileSync(img.filepath, "base64");
 
-      // ✔️ 100% working Replicate model
+      // FINAL WORKING MODEL + VERSION
       const output = await replicate.run(
-        "stability-ai/stable-diffusion-inpainting",
+        "stability-ai/stable-diffusion-inpainting:df9e75a75e3dc57f686df31cf3e3f12e52a0e7651e0d793746b5c3f47a23c5b6",
         {
           input: {
             prompt: prompt,
             image: `data:image/jpeg;base64,${base64Image}`,
-            mask: null, // No mask required — model handles everything
+            mask: null,
+            steps: 50,
+            guidance_scale: 7.5
           }
         }
       );
