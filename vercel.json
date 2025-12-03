@@ -2,14 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/stage-room.js",
+      "src": "api/*.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/stage-room",
-      "dest": "/api/stage-room.js"
+      "src": "/api/start-staging",
+      "dest": "/api/start-staging.js"
+    },
+    {
+      "src": "/api/check-staging",
+      "dest": "/api/check-staging.js"
     }
   ]
 }
