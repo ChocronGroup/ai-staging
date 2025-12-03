@@ -1,35 +1,37 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const jobId = req.query.jobId;
-  if (!jobId) {
-    return res.status(400).json({ error: "jobId missing" });
-  }
-
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { jobId } = req.query;
 
-    const job = await openai.images.retrieve(jobId);
+    if (!jobId) {
+      return res.status(400).json({ error: "Missing jobId" });
+    }
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const job = await client.images.jobs.retrieve(jobId);
 
     if (job.status === "succeeded") {
-      const b64 = job.output[0].b64_json;
       return res.status(200).json({
         status: "done",
-        imageUrl: `data:image/png;base64,${b64}`
+        imageUrl: job.result[0].url
       });
     }
 
     if (job.status === "failed") {
-      return res.status(500).json({ status: "failed" });
+      return res.status(200).json({
+        status: "failed"
+      });
     }
 
-    return res.status(200).json({ status: job.status });
+    return res.status(200).json({
+      status: "pending"
+    });
+
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Failed to check status" });
+    console.error("Check error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 }
+
