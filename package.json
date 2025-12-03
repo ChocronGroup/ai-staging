@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "dependencies": {
     "formidable": "^3.5.0",
-    "openai": "^4.0.0"
+    "replicate": "^0.29.4"
   }
 }
