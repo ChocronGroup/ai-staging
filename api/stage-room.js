@@ -1,61 +1,50 @@
+import formidable from "formidable";
+import fs from "fs";
 import OpenAI from "openai";
+
+export const config = {
+  api: {
+    bodyParser: false, // required for formidable
+  },
+};
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const chunks = [];
-    req.on("data", chunk => chunks.push(chunk));
+  const form = formidable({ multiples: false });
 
-    req.on("end", async () => {
-      const boundary = req.headers["content-type"].split("boundary=")[1];
-      const body = Buffer.concat(chunks);
+  form.parse(req, async (err, fields, files) => {
+    if (err) return res.status(400).json({ error: "Upload error" });
 
-      const parts = body.toString().split(`--${boundary}`);
-      let prompt = "";
-      let imageBuffer = null;
+    try {
+      const prompt = fields.prompt;
+      const img = files.image;
 
-      for (const part of parts) {
-        if (part.includes('name="prompt"')) {
-          prompt = part.split("\r\n\r\n")[1]?.trim();
-        }
-
-        if (part.includes('name="image"')) {
-          const imgStart = part.indexOf("\r\n\r\n") + 4;
-          const imgEnd = part.lastIndexOf("\r\n");
-          imageBuffer = Buffer.from(
-            part.substring(imgStart, imgEnd),
-            "binary"
-          );
-        }
+      if (!img) {
+        return res.status(400).json({ error: "No image uploaded" });
       }
 
-      if (!prompt || !imageBuffer) {
-        return res.status(400).json({ error: "Missing prompt or image" });
-      }
-
-      const client = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
-      });
-
-      const response = await client.images.edit({
+      // OpenAI IMAGE EDITS (THIS ACCEPTS IMAGE UPLOAD)
+      const result = await client.images.edits({
         model: "gpt-image-1",
-        image: imageBuffer,
-        prompt: `Virtual staging: ${prompt}`,
+        prompt,
+        image: fs.createReadStream(img.filepath),
         size: "1024x1024",
         response_format: "b64_json"
       });
 
-      const b64 = response.data[0].b64_json;
+      const base64 = result.data[0].b64_json;
+      const imageUrl = `data:image/png;base64,${base64}`;
 
-      res.status(200).json({
-        imageUrl: `data:image/png;base64,${b64}`
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Staging failed" });
-  }
+      res.status(200).json({ imageUrl });
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "AI processing failed" });
+    }
+  });
 }
