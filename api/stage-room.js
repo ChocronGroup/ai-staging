@@ -34,31 +34,31 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // Convert uploaded image to base64
+      // Read image into base64
       const base64Image = fs.readFileSync(img.filepath, "base64");
 
-      // Run FLUX.1 Inpaint (BEST staging model)
+      // CORRECT WORKING MODEL
       const output = await replicate.run(
-        "black-forest-labs/flux.1-inpaint",
+        "black-forest-labs/flux-1-inpaint",
         {
           input: {
             prompt: prompt,
             image: `data:image/jpeg;base64,${base64Image}`,
-            mask: null, 
+            mask: null,
             guidance: 5,
             steps: 50
           }
         }
       );
 
-      // Model returns a DIRECT URL to the staged image
+      // The model returns array with a direct URL
       const imageUrl = output?.[0];
 
-      res.status(200).json({ imageUrl });
+      return res.status(200).json({ imageUrl });
 
     } catch (error) {
       console.error("Replicate staging error:", error);
-      res.status(500).json({ error: "Staging failed" });
+      return res.status(500).json({ error: "Staging failed" });
     }
   });
 }
