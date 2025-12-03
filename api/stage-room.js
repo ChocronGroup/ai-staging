@@ -34,32 +34,30 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // Read image data into base64
-      const imageBase64 = fs.readFileSync(img.filepath, {
-        encoding: "base64",
-      });
+      // Convert uploaded image to base64
+      const base64Image = fs.readFileSync(img.filepath, "base64");
 
-      // Use Stable Diffusion Inpainting model
+      // Run FLUX.1 Inpaint (BEST staging model)
       const output = await replicate.run(
-        "stability-ai/stable-diffusion-inpainting:4fba758f87c1d4e61a34ea7cde5335c650b29fbb620142f4e2d8736301478bcb",
+        "black-forest-labs/flux.1-inpaint",
         {
           input: {
             prompt: prompt,
-            image: `data:image/jpeg;base64,${imageBase64}`,
-            mask: null, // Let model decide what to replace
-            guidance_scale: 7.5,
-            num_inference_steps: 50,
-          },
+            image: `data:image/jpeg;base64,${base64Image}`,
+            mask: null, 
+            guidance: 5,
+            steps: 50
+          }
         }
       );
 
-      // Output is usually an array with first image URL
-      const imageUrl = Array.isArray(output) ? output[0] : output;
+      // Model returns a DIRECT URL to the staged image
+      const imageUrl = output?.[0];
 
       res.status(200).json({ imageUrl });
 
     } catch (error) {
-      console.error("Replicate Error:", error);
+      console.error("Replicate staging error:", error);
       res.status(500).json({ error: "Staging failed" });
     }
   });
