@@ -1,8 +1,8 @@
 {
   "name": "ai-staging",
   "version": "1.0.0",
-  "type": "module",
   "dependencies": {
-    "openai": "^4.47.1"
+    "formidable": "^3.5.0",
+    "openai": "^4.0.0"
   }
 }
