@@ -34,24 +34,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "No image uploaded" });
       }
 
-      // Read image into base64
+      // Read the uploaded photo
       const base64Image = fs.readFileSync(img.filepath, "base64");
 
-      // CORRECT WORKING MODEL
+      // Use xvitaly/inpainting (best working staging-friendly model)
       const output = await replicate.run(
-        "black-forest-labs/flux-1-inpaint",
+        "xvitaly/inpainting",
         {
           input: {
             prompt: prompt,
             image: `data:image/jpeg;base64,${base64Image}`,
             mask: null,
-            guidance: 5,
-            steps: 50
           }
         }
       );
 
-      // The model returns array with a direct URL
       const imageUrl = output?.[0];
 
       return res.status(200).json({ imageUrl });
